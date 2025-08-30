@@ -1,0 +1,280 @@
+# STARDUST_GAME143
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>STARDUST — Celestial Pulse</title>
+<style>
+  :root{
+    --bg1:#040312;--bg2:#0b0920;--accent:#8b5cf6;--accent2:#ff7ab6;color:#e6eef8;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--color,#fff);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .wrap{max-width:980px;margin:10px auto;padding:14px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0}
+  .top-actions{display:flex;gap:8px;flex-wrap:wrap}
+  button{background:linear-gradient(90deg,var(--accent),var(--accent2));border:none;color:#070617;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer}
+  .panel{background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;margin-top:12px;box-shadow:0 6px 20px rgba(11,8,24,0.5)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:10px;border-radius:12px;width:140px;text-align:center;cursor:pointer;transition:transform .18s,box-shadow .18s}
+  .card:hover{transform:translateY(-6px);box-shadow:0 12px 24px rgba(0,0,0,0.5)}
+  .avatar{width:96px;height:96px;border-radius:12px;margin:0 auto;display:block}
+  .muted{color:#bfc7d6;font-size:13px}
+  .hidden{display:none}
+  canvas{border-radius:8px;display:block;margin:12px auto;background:linear-gradient(180deg,#001, #001a)}
+  footer{margin-top:18px;color:#9aa3c2;font-size:13px}
+  @media(max-width:420px){ .card{width:44%} }
+</style>
+</head>
+<body>
+<canvas id="starfield"></canvas>
+<div class="wrap ui">
+  <header>
+    <h1>STARDUST — Celestial Pulse</h1>
+    <div class="top-actions">
+      <button onclick="showScreen('menu')">Menu</button>
+      <button onclick="showScreen('story')">Story</button>
+      <button onclick="showScreen('karaoke')">Karaoke</button>
+      <button onclick="showScreen('minigames')">Mini-Games</button>
+      <button onclick="showScreen('instaFeed')">Insta Feed</button>
+    </div>
+  </header>
+
+  <!-- MENU / CHARACTER SELECT -->
+  <section id="menu" class="panel">
+    <h2>Select your character (Tap to pick)</h2>
+    <div class="row" id="charGrid"></div>
+    <div style="margin-top:10px"><button id="confirmBtn">Confirm • Start Chapter 1</button></div>
+    <div class="muted" style="margin-top:8px">Your progress is saved locally on this device.</div>
+  </section>
+
+  <!-- STORY -->
+  <section id="story" class="panel hidden">
+    <h2 id="chapterTitle">Chapter 1</h2>
+    <div id="chapterText" style="white-space:pre-line;margin-top:8px"></div>
+    <div style="margin-top:8px"><button id="nextLineBtn">Next</button> <button id="skipBtn">Skip</button></div>
+    <div class="muted" style="margin-top:8px">Chapter <span id="chapterNum">1</span> / 33</div>
+  </section>
+
+  <!-- KARAOKE -->
+  <section id="karaoke" class="panel hidden">
+    <h2>Karaoke & Record</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="loadSong('starlight')">Starlight Rise</button>
+      <button onclick="loadSong('eclipse')">Eclipse My Heart</button>
+      <button onclick="loadSong('forever')">Forever Stage</button>
+      <button onclick="stopBacking()">Stop</button>
+    </div>
+
+    <div class="karaoke-box" id="karaokeBox" aria-live="polite">
+      <div id="nowPlaying" style="font-weight:800">No song playing</div>
+      <div id="lyricsList" style="margin-top:10px"></div>
+    </div>
+
+    <div style="margin-top:10px">
+      <button id="btnRecord">Start Recording</button>
+      <button id="btnStopRec" disabled>Stop Recording</button>
+      <button id="btnPlayRec" disabled>Play My Recording</button>
+      <a id="dlRec" style="color:#ffdfe8;margin-left:10px"></a>
+    </div>
+    <div class="muted" style="margin-top:8px">Recording saves a local .webm file. Play it back or download it to share.</div>
+  </section>
+
+  <!-- MINI-GAMES -->
+  <section id="minigames" class="panel hidden">
+    <h2>Mini-Game Corner (unlockable)</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="card" onclick="playMini(1)"><div style="font-weight:800">Dance Steps</div><div class="muted">Tap arrows to the beat</div></div>
+      <div class="card" onclick="playMini(2)"><div style="font-weight:800">Vocal Harmony</div><div class="muted">Repeat the melody</div></div>
+      <div class="card" onclick="playMini(3)"><div style="font-weight:800">Beat Match</div><div class="muted">Arrange beats</div></div>
+      <div class="card" onclick="playMini(4)"><div style="font-weight:800">Final Showdown</div><div class="muted">Precision timing</div></div>
+    </div>
+  </section>
+
+  <!-- INSTAGRAM-STYLE FEED -->
+  <section id="instaFeed" class="panel hidden">
+    <h2>Fandom Feed</h2>
+    <div id="feedContainer" style="overflow-y:auto;max-height:500px;display:flex;flex-direction:column;gap:12px;padding:4px;"></div>
+
+    <div style="margin-top:10px;display:flex;gap:8px;">
+      <input type="text" id="postText" placeholder="Post your outfit or thoughts..."
+             style="flex:1;padding:6px;border-radius:8px;border:none;background:rgba(255,255,255,0.05);color:#fff">
+      <button onclick="postToFeed()" 
+              style="background:linear-gradient(90deg,#8b5cf6,#ff7ab6);border:none;color:#070617;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer">Post</button>
+    </div>
+  </section>
+
+  <footer>Tip: open in Chrome, tap menu → Add to Home screen (for app-like experience)</footer>
+</div>
+
+<script>
+/* ============ STARFIELD ============ */
+(function(){
+  const c = document.getElementById('starfield');
+  const ctx = c.getContext('2d');
+  let w,h,stars=[];
+  function resize(){ w=c.width=innerWidth; h=c.height=innerHeight; stars=[]; for(let i=0;i<160;i++) stars.push({x:Math.random()*w,y:Math.random()*h,z:Math.random()*1.2+0.2,r:Math.random()*1.5+0.3}); }
+  function update(){
+    ctx.clearRect(0,0,w,h);
+    for(const s of stars){
+      s.y += 0.3 + s.z*1.2;
+      s.x += Math.sin(s.y/50)*0.2;
+      if(s.y>h+10){ s.y=-10; s.x=Math.random()*w; }
+      ctx.beginPath();
+      const rad = s.r * (1 + 0.8*Math.sin(Date.now()/600 + s.x));
+      ctx.fillStyle = 'rgba(255,255,255,'+(0.08 + s.z*0.4)+')';
+      ctx.arc(s.x, s.y, rad, 0, Math.PI*2);
+      ctx.fill();
+    }
+    requestAnimationFrame(update);
+  }
+  addEventListener('resize', resize);
+  resize(); update();
+})();
+
+/* ============================
+   SCREENS SWITCH
+============================ */
+function showScreen(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+/* ============================
+   CHARACTERS
+============================ */
+const STARDUST = [
+  {id:'Aeris', name:'Aeris', role:'Leader', color:'#FFB6C1'},
+  {id:'Liora', name:'Liora', role:'Main Vocal', color:'#FFD1DC'},
+  {id:'Selene', name:'Selene', role:'Main Dancer', color:'#E6CCFF'},
+  {id:'Mirae', name:'Mirae', role:'Composer', color:'#C9F0FF'},
+  {id:'Vega', name:'Vega', role:'Maknae', color:'#FFE4B5'}
+];
+const ECLIPSE = [
+  {id:'Riven', name:'Riven', role:'Leader', color:'#B0E0E6'},
+  {id:'Arion', name:'Arion', role:'Vocal', color:'#A8D5FF'},
+  {id:'Nyx', name:'Nyx', role:'Dance', color:'#C1FFD7'},
+  {id:'Zephyr', name:'Zephyr', role:'Lead Vocal', color:'#FDE2FF'},
+  {id:'Dusk', name:'Dusk', role:'Maknae', color:'#EFE4B0'}
+];
+
+const charGrid = document.getElementById('charGrid');
+let selectedCharId = localStorage.getItem('stardust_selected') || STARDUST[0].id;
+function createAvatarSVG(name, color){
+  const svg = `<svg class="avatar" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+    <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="${color}"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.2"/></linearGradient></defs>
+    <rect width="120" height="120" rx="14" fill="#0b0920"/>
+    <circle cx="60" cy="44" r="22" fill="url(#g)"/>
+    <rect x="32" y="72" width="56" height="26" rx="8" fill="${color}" opacity="0.14"/>
+    <text x="60" y="88" font-size="10" fill="#fff" text-anchor="middle">${name}</text></svg>`;
+  return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg);
+}
+function populateChars(){
+  for(const g of STARDUST){
+    const d=document.createElement('div'); d.className='card';
+    d.innerHTML = `<img class="avatar" src="${createAvatarSVG(g.name,g.color)}" alt="${g.name}"><div style="margin-top:8px;font-weight:800">${g.name}</div><div class="muted">${g.role}</div>`;
+    d.onclick = ()=> selectChar(g.id);
+    charGrid.appendChild(d);
+  }
+  for(const b of ECLIPSE){
+    const d=document.createElement('div'); d.className='card';
+    d.innerHTML = `<img class="avatar" src="${createAvatarSVG(b.name,b.color)}" alt="${b.name}"><div style="margin-top:8px;font-weight:800">${b.name}</div><div class="muted">${b.role}</div>`;
+    d.onclick = ()=> selectChar(b.id);
+    charGrid.appendChild(d);
+  }
+}
+function selectChar(id){
+  selectedCharId = id; localStorage.setItem('stardust_selected', id);
+  alert('Selected ' + id);
+}
+populateChars();
+document.getElementById('confirmBtn').onclick = ()=> { startChapter(1); showScreen('story'); };
+
+/* ============================
+   STORY + CHAPTERS (33 main + 2 bonus)
+============================ */
+const CHAPTERS = [];
+for(let i=1;i<=33;i++){
+  CHAPTERS.push({num:i,title:'Chapter '+i,text:[`Story content of Chapter ${i}.`]});
+}
+CHAPTERS.push({num:34,title:'Bonus Chapter 1',text:['Special unlocked content!']});
+CHAPTERS.push({num:35,title:'Bonus Chapter 2',text:['Final romantic closure!']});
+let currentChapter = Number(localStorage.getItem('stardust_chapter') || 1);
+function startChapter(n){
+  currentChapter=n;
+  localStorage.setItem('stardust_chapter',n);
+  const ch = CHAPTERS.find(x=>x.num===n);
+  if(!ch) return;
+  document.getElementById('chapterTitle').innerText = `Chapter ${ch.num}: ${ch.title}`;
+  document.getElementById('chapterText').innerText = ch.text.join('\n\n');
+  document.getElementById('chapterNum').innerText = ch.num;
+}
+document.getElementById('nextLineBtn').onclick = ()=>{
+  if(currentChapter < CHAPTERS.length) startChapter(currentChapter+1);
+  else alert('You reached the final chapter — congrats!');
+};
+document.getElementById('skipBtn').onclick = ()=>{ if(currentChapter < CHAPTERS.length) startChapter(currentChapter+1); else alert('End of story'); };
+startChapter(currentChapter);
+
+/* ============================
+   INSTAGRAM-STYLE FEED (NPC + Player)
+============================ */
+const feedContainer = document.getElementById('feedContainer');
+const npcUsers = ['Fan_Star123','KpopLover88','DanceFan99','EventBot','MusicCritic','StageWatcher'];
+const npcPosts = [
+  'Aeris & Riven stage chemistry is 🔥!',
+  'Liora & Zephyr duet is so cute! 😍',
+  'Selene & Nyx dance moves are on point!',
+  'Vega & Dusk were amazing in the last rehearsal!',
+  'Mirae & Arion are composing something special 🎶',
+  '🌟 Upcoming Concert: Grand Stage Live this Friday!',
+  '🎤 Mini-Game Challenge: Beat Match starts now!',
+  'Fans are shipping Aeris & Riven so hard lol',
+  'Selene & Nyx duet went viral on social media!',
+  'New outfits unlocked for Stardust & Eclipse!'
+];
+let feedPosts = [];
+function generateNPCPost(){
+  const author = npcUsers[Math.floor(Math.random()*npcUsers.length)];
+  const text = npcPosts[Math.floor(Math.random()*npcPosts.length)];
+  return {author,text,likes:Math.floor(Math.random()*20),img:null};
+}
+for(let i=0;i<5;i++) feedPosts.push(generateNPCPost());
+function renderFeed(){
+  feedContainer.innerHTML='';
+  feedPosts.forEach((post,idx)=>{
+    const div = document.createElement('div');
+    div.className='card';
+    div.style.background='linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.1))';
+    div.style.padding='10px';
+    div.style.borderRadius='12px';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="width:40px;height:40px;border-radius:50%;background:#ff7ab6;display:flex;justify-content:center;align-items:center;color:#fff;font-weight:700;font-size:14px">${post.author[0]}</div>
+        <strong>${post.author}</strong>
+      </div>
+      <p style="margin-top:4px;">${post.text}</p>
+      ${post.img?`<img src="${post.img}" style="width:100%;border-radius:8px;margin-top:6px"/>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <button onclick="likePost(${idx})" style="background:none;border:none;color:#ff7ab6;cursor:pointer;font-weight:700">❤️ ${post.likes}</button>
+        <span style="font-size:12px;color:#bfc7d6">${new Date().toLocaleTimeString()}</span>
+      </div>`;
+    feedContainer.appendChild(div);
+  });
+}
+function likePost(idx){ feedPosts[idx].likes++; renderFeed(); }
+function postToFeed(){
+  const txt = document.getElementById('postText').value.trim();
+  if(txt==='') return;
+  const selectedCharacterImg = createAvatarSVG(selectedCharId,'#8b5cf6');
+  feedPosts.unshift({author:'You',text:txt,likes:0,img:selectedCharacterImg});
+  document.getElementById('postText').value='';
+  renderFeed();
+}
+setInterval(()=>{feedPosts.unshift(generateNPCPost()); if(feedPosts.length>30) feedPosts.pop(); renderFeed();},25000);
+renderFeed();
+
+</script>
+</body>
+</html>
